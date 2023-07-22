@@ -46,22 +46,23 @@ for (_r, _θ) in zip(rs,θs)
 end
 xys = hcat(xys...)
 
-psh = plot(frame_style=:box, gridalpha=0.5)
+psh = plot(frame_style=:box, gridalpha=0.5, legend=:topleft)
 plot!(psh, ts_states, rs, label="r", color=:red)
 plot!(psh, ts_states, θs, label="θ", color=:blue)
 plot!(psh, ts_states, vrs, label="vr", color=:purple)
 plot!(psh, ts_states, vθs, label="vθ", color=:green)
 
-pcon = plot(frame_style=:box, gridalpha=0.5,
+pcon = plot(frame_style=:box, gridalpha=0.5, legend=:bottomleft,
     ylim=[-1.05, 1.05])
 plot!(pcon, ts_controls, u1s, label="u1", color=:red, marker=:circle)
 plot!(pcon, ts_controls, u2s, label="u2", color=:blue, marker=:circle)
 
-ptraj = plot(frame_style=:box, aspect_ratio=:equal)
+ptraj = plot(frame_style=:box, aspect_ratio=:equal, legend=:bottomright)
 plot!(ptraj, xys[1,:], xys[2,:], marker=:circle, label="Transfer", color=:lime)
 plot!(ptraj, initial_orbit[1,:], initial_orbit[2,:], color=:blue, label="Initial")
 plot!(ptraj, final_orbit[1,:], final_orbit[2,:], color=:red, label="Final")
 
 l = @layout [[a;b] c]
-pcomb = plot(psh, pcon, ptraj; legend=:bottomright, size=(900,500), layout=l)
+pcomb = plot(psh, pcon, ptraj; size=(900,500), layout=l)
+savefig(pcomb, joinpath(@__DIR__, "orbit_raising.png"))
 display(pcomb)
