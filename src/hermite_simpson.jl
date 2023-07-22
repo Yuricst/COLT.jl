@@ -2,15 +2,15 @@
 Functions for Hermite-Simpson collocation methods
 """
 
+"""
+Get the Hermite-Simpson defect function for a given dynamics function
+"""
 function get_hs_defect_function(
-    state_variables,
-    control_variables,
     dynamics::Function,
+    nx::Int,
+    nu::Int,
     params,
 )
-    # number of states and controls 
-    nx, nu = length(state_variables), length(control_variables)
-
     # prepare function that creates Hermite-Simpson defect constraints
     @memoize function hs_defect(txu0_txu1_uc...)
         # unsplat the input

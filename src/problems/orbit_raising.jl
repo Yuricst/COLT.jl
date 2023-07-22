@@ -8,6 +8,9 @@ using Memoize
 using Plots
 
 
+"""
+Dynamics for orbit raising problem
+"""
 function dynamics_orbitraise(t, x, u, p)
     r, θ, vr, vθ = x  # unpack states
     a = 0.1405/(1 - 0.0749t)
@@ -76,9 +79,9 @@ function get_orbit_raising_model(
     control_variables = [u1, u2]
 
     hs_defect = get_hs_defect_function(
-        state_variables,
-        control_variables,
         dynamics_orbitraise,
+        nx,
+        nu,
         nothing,
     )
 
