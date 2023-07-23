@@ -22,7 +22,7 @@ Collocation based trajectory optimization
 
 **Prepared problem models**
 
-- [ ] Two-body orbit raising problem (Cartesian)
+- [x] Two-body orbit raising problem (Cartesian)
 - [ ] Two-body orbit transfer problem (Cartesian)
 - [ ] Two-body rendez-vous problem (Cartesian)
 

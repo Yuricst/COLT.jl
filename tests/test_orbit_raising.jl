@@ -13,6 +13,8 @@ prob = COLT.CollocationProblem(COLT.get_orbit_raising_model(N=40)...)
 
 # solve problem
 COLT.solve!(prob)
+# print cache to make sure it has been cleared 
+@show memoize_cache(prob.hs_defect)
 
 # get model out to plot etc.
 model = prob.model

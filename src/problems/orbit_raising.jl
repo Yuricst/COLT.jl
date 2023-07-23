@@ -2,11 +2,6 @@
 Ready-to-go model for orbit raising problem
 """
 
-using JuMP
-import Ipopt
-using Memoize
-using Plots
-
 
 """
 Dynamics for orbit raising problem
