@@ -12,13 +12,17 @@ function get_hs_defect_function(
     params,
 )
     # prepare function that creates Hermite-Simpson defect constraints
-    @memoize function hs_defect(txu0_txu1_uc...)
+    @memoize function hs_defect(txu0_txu1_uc_tf...)
         # unsplat the input
-        txu0 = txu0_txu1_uc[1:1+nx+nu]
-        txu1 = txu0_txu1_uc[2+nx+nu:2*(1+nx+nu)]
-        tc = (txu0[1] + txu1[1])/2
+        txu0 = txu0_txu1_uc_tf[1:1+nx+nu]
+        txu1 = txu0_txu1_uc_tf[2+nx+nu:2*(1+nx+nu)]
+        tf = txu0_txu1_uc_tf[2*(1+nx+nu)+1]            # final time 
         
-        T = txu1[1] - txu0[1]
+        # recreate dimensional time
+        t0 = txu0[1]*tf
+        t1 = txu1[1]*tf
+        tc = (t0 + t1)/2
+        T = t1 - t0
         
         # compute state & state derivative at center
         x0 = collect(txu0[2:2+nx-1])
@@ -26,8 +30,8 @@ function get_hs_defect_function(
         u0 = collect(txu0[2+nx:end])
         u1 = collect(txu1[2+nx:end])
         uc = (u0 + u1)/2
-        f0 = dynamics(txu0[1], x0, u0, params)
-        f1 = dynamics(txu1[1], x1, u1, params)
+        f0 = dynamics(t0, x0, u0, params)
+        f1 = dynamics(t1, x1, u1, params)
         
         xc = (x0 + x1)/2 + T*(f0 + f1)/8
         

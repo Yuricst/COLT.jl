@@ -4,13 +4,15 @@ Test orbit raising problem
 
 using Plots 
 using JuMP
+using Memoize
 
 include("../src/COLT.jl")
 
-model = COLT.get_orbit_raising_model()
+model, hs_defect = COLT.get_orbit_raising_model(N=40)
 @show model
 
 optimize!(model)
+memoize_cache(hs_defect)
 
 @show objective_value(model);
 @show termination_status(model);

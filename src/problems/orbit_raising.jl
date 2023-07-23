@@ -24,12 +24,12 @@ function dynamics_orbitraise(t, x, u, p)
 end
 
 
-function get_orbit_raising_model(
+function get_orbit_raising_model(;
     N::Int=30,
 )
     # problem parameters
     nx, nu = 4, 2         # number of states & controls
-    tf = 3.32             # fixed final time
+    tf_max = 3.32         # fixed final time
     N_nodes = N + 1       # number of nodes
     N_controls = N + 1    # number of controls
 
@@ -39,6 +39,8 @@ function get_orbit_raising_model(
 
     # decision variables
     @variables(model, begin
+        # full duration of trajectory
+        tf
         # times --- these are place holders, they will be fixed for now
         t[1:N_controls]
         # states
@@ -52,8 +54,9 @@ function get_orbit_raising_model(
     end);
 
     # fix time
+    fix(tf, tf_max; force = true)
     for i = 1:N_controls
-        fix(t[i], tf*(i-1)/(N_controls-1); force = true)
+        fix(t[i], (i-1)/(N_controls-1); force = true)
     end
 
     # boundary constraints (initial)
@@ -92,23 +95,23 @@ function get_orbit_raising_model(
     hs_defect_4(txu0_txu1_uc...) = hs_defect(txu0_txu1_uc...)[4]
 
     # register & add nonlinear constraints for dynamics
-    register(model, :hs_defect_1, 2*(1+nx+nu), hs_defect_1; autodiff = true)
-    register(model, :hs_defect_2, 2*(1+nx+nu), hs_defect_2; autodiff = true)
-    register(model, :hs_defect_3, 2*(1+nx+nu), hs_defect_3; autodiff = true)
-    register(model, :hs_defect_4, 2*(1+nx+nu), hs_defect_4; autodiff = true)
+    register(model, :hs_defect_1, 2*(1+nx+nu)+1, hs_defect_1; autodiff = true)
+    register(model, :hs_defect_2, 2*(1+nx+nu)+1, hs_defect_2; autodiff = true)
+    register(model, :hs_defect_3, 2*(1+nx+nu)+1, hs_defect_3; autodiff = true)
+    register(model, :hs_defect_4, 2*(1+nx+nu)+1, hs_defect_4; autodiff = true)
 
     for i = 1:N
         ix1, ix2 = i, i+1
         iu1, iu2 = i, i+1
         txu1 = [t[ix1], r[ix1], θ[ix1], vr[ix1], vθ[ix1], u1[iu1], u2[iu1]]
         txu2 = [t[ix2], r[ix2], θ[ix2], vr[ix2], vθ[ix2], u1[iu2], u2[iu2]]
-        @NLconstraint(model, hs_defect_1(txu1..., txu2...) == 0.0)
-        @NLconstraint(model, hs_defect_2(txu1..., txu2...) == 0.0)
-        @NLconstraint(model, hs_defect_3(txu1..., txu2...) == 0.0)
-        @NLconstraint(model, hs_defect_4(txu1..., txu2...) == 0.0)
+        @NLconstraint(model, hs_defect_1(txu1..., txu2..., tf) == 0.0)
+        @NLconstraint(model, hs_defect_2(txu1..., txu2..., tf) == 0.0)
+        @NLconstraint(model, hs_defect_3(txu1..., txu2..., tf) == 0.0)
+        @NLconstraint(model, hs_defect_4(txu1..., txu2..., tf) == 0.0)
     end
 
     # append objective
     @objective(model, Max, r[end]);
-    return model
+    return model, hs_defect
 end
