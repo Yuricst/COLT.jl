@@ -24,8 +24,13 @@ function dynamics_orbitraise(t, x, u, p)
 end
 
 
+"""
+Get JuMP model and defect function for orbit raising problem
+"""
 function get_orbit_raising_model(;
     N::Int=30,
+    solver=Ipopt.Optimizer,
+    collocation_type="hermite_simpson"
 )
     # problem parameters
     nx, nu = 4, 2         # number of states & controls
@@ -34,7 +39,7 @@ function get_orbit_raising_model(;
     N_controls = N + 1    # number of controls
 
     # initialize model
-    model = Model(Ipopt.Optimizer)
+    model = Model(solver)
     #set_optimizer_attribute(model, "algorithm", :LD_MMA)
 
     # decision variables
@@ -79,14 +84,18 @@ function get_orbit_raising_model(;
 
     # list out states and controls variables
     state_variables = [r,θ,vr,vθ]
-    control_variables = [u1, u2]
+    control_variables = [u1,u2]
 
-    hs_defect = get_hs_defect_function(
-        dynamics_orbitraise,
-        nx,
-        nu,
-        nothing,
-    )
+    if collocation_type == "hermite_simpson"
+        hs_defect = get_hs_defect_function(
+            dynamics_orbitraise,
+            nx,
+            nu,
+            nothing,
+        )
+    else
+        error("collocation_type $collocation_type not recognized")
+    end
 
     # make function aliases with single scalar outputs
     hs_defect_1(txu0_txu1_uc...) = hs_defect(txu0_txu1_uc...)[1]

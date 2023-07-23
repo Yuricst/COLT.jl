@@ -8,11 +8,14 @@ using Memoize
 
 include("../src/COLT.jl")
 
-model, hs_defect = COLT.get_orbit_raising_model(N=40)
-@show model
+# construct problem
+prob = COLT.CollocationProblem(COLT.get_orbit_raising_model(N=40)...)
 
-optimize!(model)
-memoize_cache(hs_defect)
+# solve problem
+COLT.solve!(prob)
+
+# get model out to plot etc.
+model = prob.model
 
 @show objective_value(model);
 @show termination_status(model);

@@ -3,6 +3,13 @@
 Collocation based trajectory optimization
 
 
+### Usage
+
+1. Use an existing problem model (see Prepared problem models list below)
+
+2. Coding your own problem
+
+
 
 ### TODOs
 
@@ -13,7 +20,7 @@ Collocation based trajectory optimization
 - [ ] Node relocation
 
 
-**Problem functions**
+**Prepared problem models**
 
 - [ ] Two-body orbit raising problem (Cartesian)
 - [ ] Two-body orbit transfer problem (Cartesian)
