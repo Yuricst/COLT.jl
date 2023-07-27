@@ -26,7 +26,11 @@ function solve!(problem::CollocationProblem)
     # solve the problem
     optimize!(problem.model)
     # flush the memory
-    empty!(memoize_cache(problem.hs_defect))
+    try
+        empty!(memoize_cache(problem.hs_defect))
+    catch
+        # do nothing
+    end
     if isnothing(problem.get_target_state) == false
         empty!(memoize_cache(problem.get_target_state))
     end

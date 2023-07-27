@@ -8,24 +8,15 @@ Dynamics for two-body spacecraft rendez-vous
 """
 function dynamics_twobody(t, states, u, p)
     x, y, z, _, _, _, mass = states  # unpack states
-    r3 = (x^2 + y^2 + z^2)^(3/2)    # radius
+    r3 = (x^2 + y^2 + z^2)^(3/2)     # radius^3
     mu, c1, c2 = p                   # unpack parameters
-    # dx = [
-    #     states[4],
-    #     states[5],
-    #     states[6],
-    #     -mu/r3*x + c1/mass*u[1],
-    #     -mu/r3*y + c1/mass*u[2],
-    #     -mu/r3*z + c1/mass*u[3],
-    #     -c2*sqrt(u[1]^2 + u[2]^2 + u[3]^2)
-    # ]
     dx = [
         states[4],
         states[5],
         states[6],
-        -mu/r3*x + c1/mass*u[1],
-        -mu/r3*y + c1/mass*u[2],
-        -mu/r3*z + c1/mass*u[2],
+        -mu/r3 * x + c1/mass*u[1],
+        -mu/r3 * y + c1/mass*u[2],
+        -mu/r3 * z + c1/mass*u[3],
         -c2*(u[1]^2 + u[2]^2 + u[3]^2)^(0.5)
     ]
     return dx
@@ -39,7 +30,7 @@ function get_twobody_rendezvous_model(
     state0,
     target_state,
     mu, c1, c2, 
-    tf_bounds,
+    tf_bounds;
     mass_bounds=[0.3, 1.0],
     r_max::Real=3.0,
     v_max::Real=1.5,
@@ -88,12 +79,12 @@ function get_twobody_rendezvous_model(
     end
 
     # boundary constraints (initial)
-    fix(x[1],  state0[1]; force = true)
-    fix(y[1],  state0[2]; force = true)
-    fix(z[1],  state0[3]; force = true)
-    fix(vx[1], state0[4]; force = true)
-    fix(vx[1], state0[5]; force = true)
-    fix(vx[1], state0[6]; force = true)
+    fix(x[1],    state0[1]; force = true)
+    fix(y[1],    state0[2]; force = true)
+    fix(z[1],    state0[3]; force = true)
+    fix(vx[1],   state0[4]; force = true)
+    fix(vy[1],   state0[5]; force = true)
+    fix(vz[1],   state0[6]; force = true)
     fix(mass[1], state0[7]; force = true)
 
     # boundary constraints (final)
@@ -183,9 +174,9 @@ function get_twobody_rendezvous_model(
         @NLconstraint(model, hs_defect_1(txu1..., txu2..., tf) == 0.0)
         @NLconstraint(model, hs_defect_2(txu1..., txu2..., tf) == 0.0)
         @NLconstraint(model, hs_defect_3(txu1..., txu2..., tf) == 0.0)
-        # @NLconstraint(model, hs_defect_4(txu1..., txu2..., tf) == 0.0)
-        # @NLconstraint(model, hs_defect_5(txu1..., txu2..., tf) == 0.0)
-        # @NLconstraint(model, hs_defect_6(txu1..., txu2..., tf) == 0.0)
+        @NLconstraint(model, hs_defect_4(txu1..., txu2..., tf) == 0.0)
+        @NLconstraint(model, hs_defect_5(txu1..., txu2..., tf) == 0.0)
+        @NLconstraint(model, hs_defect_6(txu1..., txu2..., tf) == 0.0)
         @NLconstraint(model, hs_defect_7(txu1..., txu2..., tf) == 0.0)
     end
     return model, hs_defect, get_target_state

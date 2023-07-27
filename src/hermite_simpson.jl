@@ -12,7 +12,8 @@ function get_hs_defect_function(
     params,
 )
     # prepare function that creates Hermite-Simpson defect constraints
-    @memoize function hs_defect(txu0_txu1_uc_tf...)
+    #@memoize 
+    function hs_defect(txu0_txu1_uc_tf...)
         # unsplat the input
         txu0 = txu0_txu1_uc_tf[1:1+nx+nu]
         txu1 = txu0_txu1_uc_tf[2+nx+nu:2*(1+nx+nu)]

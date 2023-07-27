@@ -3,6 +3,7 @@ module COLT
     using JuMP
     using Ipopt 
     using Memoize
+    using LRUCache
     using LinearAlgebra
     import ForwardDiff
 
