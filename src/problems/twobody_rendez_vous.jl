@@ -31,14 +31,13 @@ function get_twobody_rendezvous_model(
     target_state,
     mu, c1, c2, 
     tf_bounds;
-    mass_bounds=[0.3, 1.0],
+    mass_bounds=[0.5, 1.0],
     r_max::Real=3.0,
     v_max::Real=1.5,
     N::Int=40,
     solver=Ipopt.Optimizer,
-    collocation_type="hermite_simpson",
-    tf_free::Bool=true,
-    max_mf::Bool=true,
+    tf_free::Bool = false,
+    max_mf::Bool = true,
 )
     # problem parameters
     nx, nu = 7, 3         # number of states & controls
@@ -55,18 +54,20 @@ function get_twobody_rendezvous_model(
         # times --- these are place holders, they will be fixed for now
         t[1:N_controls]
         # states
-        -r_max ≤ x[1:N_nodes] ≤ r_max, (start = 1.0)
-        -r_max ≤ y[1:N_nodes] ≤ r_max, (start = 0.1)
-        -r_max ≤ z[1:N_nodes] ≤ r_max, (start = 0.1)
-        -v_max ≤ vx[1:N_nodes] ≤ v_max, (start = 0.1)
+        -r_max ≤ x[1:N_nodes]  ≤ r_max, (start = 1.0)
+        -r_max ≤ y[1:N_nodes]  ≤ r_max, (start = 0.1)
+        -r_max ≤ z[1:N_nodes]  ≤ r_max, (start = 0.0)
+        -v_max ≤ vx[1:N_nodes] ≤ v_max, (start = 0.0)
         -v_max ≤ vy[1:N_nodes] ≤ v_max, (start = 1.1)
-        -v_max ≤ vz[1:N_nodes] ≤ v_max, (start = 0.1)
+        -v_max ≤ vz[1:N_nodes] ≤ v_max, (start = 0.0)
         mass_bounds[1] ≤ mass[1:N_nodes] ≤ mass_bounds[2], (start = 1.0)
         # controls
-        -1.0 ≤ u1[1:N_controls] ≤ 1.0
-        -1.0 ≤ u2[1:N_controls] ≤ 1.0
-        -1.0 ≤ u3[1:N_controls] ≤ 1.0
+        -1.0 ≤ u1[1:N_controls] ≤ 1.0, (start = 0.5)
+        -1.0 ≤ u2[1:N_controls] ≤ 1.0, (start = 0.5)
+        -1.0 ≤ u3[1:N_controls] ≤ 1.0, (start = 0.5)
     end);
+    state_variables = [x,y,z,vx,vy,vz,mass]
+    control_variables = [u1,u2,u3]
 
     # fix final time
     if tf_free == false
@@ -98,31 +99,19 @@ function get_twobody_rendezvous_model(
         fix(vz[end], target_state[6]; force = true)
     else
         # add NL constraint based on rendez-vous
-        #@memoize 
-        get_target_state(_t) = keplerder_nostm(mu, target_state, 0.0, _t, 1.e-12, 10)
-        get_target_state_1(t) = get_target_state(t)[1]
-        get_target_state_2(t) = get_target_state(t)[2]
-        get_target_state_3(t) = get_target_state(t)[3]
-        get_target_state_4(t) = get_target_state(t)[4]
-        get_target_state_5(t) = get_target_state(t)[5]
-        get_target_state_6(t) = get_target_state(t)[6]
-        register(model, :get_target_state_1, 1, get_target_state_1; autodiff = true)
-        register(model, :get_target_state_2, 1, get_target_state_2; autodiff = true)
-        register(model, :get_target_state_3, 1, get_target_state_3; autodiff = true)
-        register(model, :get_target_state_4, 1, get_target_state_4; autodiff = true)
-        register(model, :get_target_state_5, 1, get_target_state_5; autodiff = true)
-        register(model, :get_target_state_6, 1, get_target_state_6; autodiff = true)
+        get_target_state(_t) = keplerder_nostm_colt(mu, target_state, 0.0, _t, 1.e-12, 10)
+        target_state = @expression(model, get_target_state(tf))
+        @constraint(model, x[end]  - target_state[1] == 0.0)
+        @constraint(model, y[end]  - target_state[2] == 0.0)
+        @constraint(model, z[end]  - target_state[3] == 0.0)
+        @constraint(model, vx[end] - target_state[4] == 0.0)
+        @constraint(model, vy[end] - target_state[5] == 0.0)
+        @constraint(model, vz[end] - target_state[6] == 0.0)
     end
-    @NLconstraint(model, get_target_state_1(tf) - x[end] == 0.0)
-    @NLconstraint(model, get_target_state_2(tf) - y[end] == 0.0)
-    @NLconstraint(model, get_target_state_3(tf) - z[end] == 0.0)
-    @NLconstraint(model, get_target_state_4(tf) - vx[end] == 0.0)
-    @NLconstraint(model, get_target_state_5(tf) - vy[end] == 0.0)
-    @NLconstraint(model, get_target_state_6(tf) - vz[end] == 0.0)
 
     # path constraints
     for i = 1:N_controls
-        @NLconstraint(model, u1[i]^2 + u2[i]^2 + u3[i]^2 ≤ 1.0)
+        @constraint(model, u1[i]^2 + u2[i]^2 + u3[i]^2 ≤ 1.0)
     end
 
     # objective is linear, to maximize final mass or minimize time
@@ -131,54 +120,5 @@ function get_twobody_rendezvous_model(
     else
         @objective(model, Min, tf);
     end
-
-    if collocation_type == "hermite_simpson"
-        hs_defect = get_hs_defect_function(
-            dynamics_twobody,
-            nx,
-            nu,
-            [mu, c1, c2],
-        )
-    else
-        error("collocation_type $collocation_type not recognized")
-    end
-
-    # make function aliases with single scalar outputs
-    hs_defect_1(txu0_txu1_uc...) = hs_defect(txu0_txu1_uc...)[1]
-    hs_defect_2(txu0_txu1_uc...) = hs_defect(txu0_txu1_uc...)[2]
-    hs_defect_3(txu0_txu1_uc...) = hs_defect(txu0_txu1_uc...)[3]
-    hs_defect_4(txu0_txu1_uc...) = hs_defect(txu0_txu1_uc...)[4]
-    hs_defect_5(txu0_txu1_uc...) = hs_defect(txu0_txu1_uc...)[5]
-    hs_defect_6(txu0_txu1_uc...) = hs_defect(txu0_txu1_uc...)[6]
-    hs_defect_7(txu0_txu1_uc...) = hs_defect(txu0_txu1_uc...)[7]
-
-    # register & add nonlinear constraints for dynamics
-    register(model, :hs_defect_1, 2*(1+nx+nu)+1, hs_defect_1; autodiff = true)
-    register(model, :hs_defect_2, 2*(1+nx+nu)+1, hs_defect_2; autodiff = true)
-    register(model, :hs_defect_3, 2*(1+nx+nu)+1, hs_defect_3; autodiff = true)
-    register(model, :hs_defect_4, 2*(1+nx+nu)+1, hs_defect_4; autodiff = true)
-    register(model, :hs_defect_5, 2*(1+nx+nu)+1, hs_defect_5; autodiff = true)
-    register(model, :hs_defect_6, 2*(1+nx+nu)+1, hs_defect_6; autodiff = true)
-    register(model, :hs_defect_7, 2*(1+nx+nu)+1, hs_defect_7; autodiff = true)
-
-    for i = 1:N
-        ix1, ix2 = i, i+1
-        iu1, iu2 = i, i+1
-        txu1 = [t[ix1], x[ix1], y[ix1], z[ix1],
-                vx[ix1], vy[ix1], vz[ix1], mass[ix1],
-                u1[iu1], u2[iu1], u3[iu1]]
-
-        txu2 = [t[ix2], x[ix2], y[ix2], z[ix2],
-                vx[ix2], vy[ix2], vz[ix2], mass[ix2],
-                u1[iu2], u2[iu2], u3[iu2]]
-
-        @NLconstraint(model, hs_defect_1(txu1..., txu2..., tf) == 0.0)
-        @NLconstraint(model, hs_defect_2(txu1..., txu2..., tf) == 0.0)
-        @NLconstraint(model, hs_defect_3(txu1..., txu2..., tf) == 0.0)
-        @NLconstraint(model, hs_defect_4(txu1..., txu2..., tf) == 0.0)
-        @NLconstraint(model, hs_defect_5(txu1..., txu2..., tf) == 0.0)
-        @NLconstraint(model, hs_defect_6(txu1..., txu2..., tf) == 0.0)
-        @NLconstraint(model, hs_defect_7(txu1..., txu2..., tf) == 0.0)
-    end
-    return model, hs_defect, get_target_state
+    return model, dynamics_twobody, state_variables, control_variables, [mu, c1, c2]
 end

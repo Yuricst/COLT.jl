@@ -29,6 +29,7 @@ struct HermiteSimpsonProblem <: AbstractCollocationProblem
         dynamics_orbitraise::Function,
         state_variables::Vector,
         control_variables::Vector,
+        ode_parameters::Union{Vector,Nothing},
         get_target_state::Union{Function,Nothing} = nothing,
     )
         @macroexpand @assert length(state_variables[1]) == length(control_variables[1]) "state and control must have same length!"
@@ -52,7 +53,7 @@ struct HermiteSimpsonProblem <: AbstractCollocationProblem
             dynamics_orbitraise,
             nx,
             nu,
-            nothing,
+            ode_parameters,
         )
 
         # NEW API FOR NONLINEAR PROGRAM (JuMP v1.x)

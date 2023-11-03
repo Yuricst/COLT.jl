@@ -36,42 +36,44 @@ end
 
 
 """
-    hypertrig_s(z::Union{Real,ForwardDiff.Dual}, epsilon::Real=1e-6)
+    hypertrig_s(z::Union{Real,ForwardDiff.Dual,QuadExpr}, epsilon::Real=1e-6)
 
 Hyperbolic sine function
 """
-function hypertrig_s(z::Union{Real,ForwardDiff.Dual}, epsilon::Real=1e-6)
-    if z > epsilon
-        s = (sqrt(z) - sin(sqrt(z))) / (sqrt(z))^3
-    elseif z < -epsilon
-        s = (sinh(sqrt(-z)) - sqrt(-z)) / (sqrt(-z))^3
-    else
-        s = 1/6 - z/120 + z^2/5040 - z^3/362880
-    end
+function hypertrig_s(z::Union{Real,ForwardDiff.Dual,QuadExpr}, epsilon::Real=1e-6)
+    # if z > epsilon
+    #     s = (sqrt(z) - sin(sqrt(z))) / (sqrt(z))^3
+    # elseif z < -epsilon
+    #     s = (sinh(sqrt(-z)) - sqrt(-z)) / (sqrt(-z))^3
+    # else
+    #     s = 1/6 - z/120 + z^2/5040 - z^3/362880
+    # end
+    s = 1/6 - z/120 + z^2/5040 - z^3/362880
     return s
 end
 
 
 
 """
-    hypertrig_c(z::Union{Real,ForwardDiff.Dual}, epsilon::Real=1e-6)
+    hypertrig_c(z::Union{Real,ForwardDiff.Dual,QuadExpr}, epsilon::Real=1e-6)
 
 Hyperbolic cosine function
 """
-function hypertrig_c(z::Union{Real,ForwardDiff.Dual}, epsilon::Real=1e-6)
-    if z > epsilon
-        c = (1.0 - cos(sqrt(z))) / z
-    elseif z < -epsilon
-        c = (cosh(-z) - 1) / (-z)
-    else
-        c = 1/2 - z/24 + z^2/720 - z^3/40320
-    end
+function hypertrig_c(z::Union{Real,ForwardDiff.Dual,QuadExpr}, epsilon::Real=1e-6)
+    # if z > epsilon
+    #     c = (1.0 - cos(sqrt(z))) / z
+    # elseif z < -epsilon
+    #     c = (cosh(-z) - 1) / (-z)
+    # else
+    #     c = 1/2 - z/24 + z^2/720 - z^3/40320
+    # end
+    c = 1/2 - z/24 + z^2/720 - z^3/40320
     return c
 end
 
 
 """Lagrange parameter functions"""
-function universal_functions(x::Union{Real,ForwardDiff.Dual}, alpha::Float64)
+function universal_functions(x::Union{Real,ForwardDiff.Dual,AffExpr}, alpha::Float64)
     """Function computes U0 ~ U3 from G. Der 1996"""
     # evaluate hypertrig function
     S = hypertrig_s(alpha * x^2)
@@ -87,9 +89,9 @@ end
 
 """Function computes Kepler's time equation and its derivatives in G. Der 1996 form"""
 function kepler_der_residual(
-    x::Union{Real,ForwardDiff.Dual},
+    x, #::Union{Real,ForwardDiff.Dual},
     alpha::Float64,
-    t::Union{Real,ForwardDiff.Dual},
+    t, #::Union{Real,ForwardDiff.Dual},
     t0::Union{Real,ForwardDiff.Dual},
     mu::Float64,
     r0::Float64,
@@ -128,7 +130,7 @@ end
 
 
 """
-    keplerder_nostm(mu::Float64, state0::Vector{Float64}, t0::Float64, t::Float64, tol::Float64, maxiter::Int)
+    keplerder_nostm_colt(mu::Float64, state0::Vector{Float64}, t0::Float64, t::Float64, tol::Float64, maxiter::Int)
 
 Function computes position at some future time t, without computing STM
 Formulation from G. Der formulation.
@@ -144,11 +146,11 @@ Formulation from G. Der formulation.
 # Returns
     `(array)`: final state
 """
-function keplerder_nostm(
+function keplerder_nostm_colt(
     mu::Real,
     state0::Array{<:Real,1},
     t0::Real,
-    t::Union{Real,ForwardDiff.Dual},
+    t,
     tol::Float64,
     maxiter::Int,
 )
@@ -163,13 +165,16 @@ function keplerder_nostm(
     # ITERATION WITH LAGUERRE-CONWAY METHOD
     # initial guess based on eccentricity
     ecc = norm(get_eccentricity(state0, mu))
-    if ecc < 1
-        # initial guess for circular or elliptical case
-        x0 = alpha * sqrt(mu) * (t - t0)
-    else
-        # initial guess for parabola or hyperbola
-        x0 = sqrt(mu) * (t - t0) / (10 * norm(r0))
-    end
+    # initial guess for circular or elliptical case
+    x0 = alpha * sqrt(mu) * (t - t0)
+    # if ecc < 1
+    #     # initial guess for circular or elliptical case
+    #     x0 = alpha * sqrt(mu) * (t - t0)
+    # else
+    #     # initial guess for parabola or hyperbola
+    #     x0 = sqrt(mu) * (t - t0) / (10 * norm(r0))
+    # end
+    
     # initialize final guess
     x1 = x0
     # initialize iteratation

@@ -26,7 +26,6 @@ Get JuMP model and defect function for orbit raising problem
 function get_orbit_raising_model(;
     N::Int=30,
     solver=Ipopt.Optimizer,
-    collocation_type="hermite_simpson"
 )
     # problem parameters
     nx, nu = 4, 2         # number of states & controls
@@ -81,6 +80,6 @@ function get_orbit_raising_model(;
     # list out states and controls variables
     state_variables = [r,θ,vr,vθ]
     control_variables = [u1,u2]
-    
-    return model, dynamics_orbitraise, state_variables, control_variables
+
+    return model, dynamics_orbitraise, state_variables, control_variables, nothing
 end
