@@ -98,7 +98,8 @@ function get_twobody_rendezvous_model(
         fix(vz[end], target_state[6]; force = true)
     else
         # add NL constraint based on rendez-vous
-        @memoize get_target_state(_t) = keplerder_nostm(mu, target_state, 0.0, _t, 1.e-12, 10)
+        #@memoize 
+        get_target_state(_t) = keplerder_nostm(mu, target_state, 0.0, _t, 1.e-12, 10)
         get_target_state_1(t) = get_target_state(t)[1]
         get_target_state_2(t) = get_target_state(t)[2]
         get_target_state_3(t) = get_target_state(t)[3]

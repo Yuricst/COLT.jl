@@ -4,20 +4,14 @@ Test orbit raising problem
 
 using GLMakie 
 using JuMP
-using Memoize
 
 include(joinpath(@__DIR__, "../src/COLT.jl"))
 
 # construct problem
-prob = COLT.CollocationProblem(COLT.get_orbit_raising_model(N=40)...)
+prob = COLT.HermiteSimpsonProblem(COLT.get_orbit_raising_model(N=40)...)
 
 # solve problem
 COLT.solve!(prob)
-# print cache to make sure it has been cleared 
-try
-    @show memoize_cache(prob.hs_defect)
-catch
-end
 
 @show objective_value(prob.model);
 @show termination_status(prob.model);
@@ -55,22 +49,23 @@ xys = hcat(xys...)
 
 fig = Figure(resolution = (800, 500))
 ax1 = Axis(fig[1:2, 1], xlabel = "x", ylabel = "y", aspect = 1)
-lines!(ax1, xys[1,:], xys[2,:], label="Transfer", color=:lime)
+scatterlines!(ax1, xys[1,:], xys[2,:], label="Transfer", color=:grey22, marker=:circle, markersize=7.0)
 lines!(ax1, initial_orbit[1,:], initial_orbit[2,:], color=:blue, label="Initial")
 lines!(ax1, final_orbit[1,:], final_orbit[2,:], color=:red, label="Final")
 axislegend(ax1, position=:cc)
 
 ax2 = Axis(fig[1, 2], xlabel = "t", ylabel = "State")
-lines!(ax2, ts_states, rs, label="r", color=:red)
-lines!(ax2, ts_states, θs, label="θ", color=:blue)
-lines!(ax2, ts_states, vrs, label="vr", color=:purple)
-lines!(ax2, ts_states, vθs, label="vθ", color=:green)
+scatterlines!(ax2, ts_states, rs, label="r", color=:red, marker=:circle, markersize=7.0)
+scatterlines!(ax2, ts_states, θs, label="θ", color=:blue, marker=:circle, markersize=7.0)
+scatterlines!(ax2, ts_states, vrs, label="vr", color=:purple, marker=:circle, markersize=7.0)
+scatterlines!(ax2, ts_states, vθs, label="vθ", color=:lime, marker=:circle, markersize=7.0)
 axislegend(ax2, position=:lt)
 
 ax3 = Axis(fig[2, 2], xlabel = "t", ylabel = "Control")
 scatterlines!(ax3, ts_controls, u1s, label="u1", color=:red, marker=:circle, markersize=7.0)
 scatterlines!(ax3, ts_controls, u2s, label="u2", color=:blue, marker=:circle, markersize=7.0)
 axislegend(ax3, position=:lb)
+save(joinpath(@__DIR__, "orbit_raising.png"), fig)
 fig
 
 # psh = plot(frame_style=:box, gridalpha=0.5, legend=:topleft)

@@ -19,6 +19,7 @@ function dynamics_orbitraise(t, x, u, p)
 end
 
 
+
 """
 Get JuMP model and defect function for orbit raising problem
 """
@@ -80,62 +81,6 @@ function get_orbit_raising_model(;
     # list out states and controls variables
     state_variables = [r,θ,vr,vθ]
     control_variables = [u1,u2]
-
-    if collocation_type == "hermite_simpson"
-        hs_defect = get_hs_defect_function(
-            dynamics_orbitraise,
-            nx,
-            nu,
-            nothing,
-        )
-    else
-        error("collocation_type $collocation_type not recognized")
-    end
-
-    # NEW API FOR NONLINEAR PROGRAM (JuMP v1.x)
-    txu0_txu1_uc_tf = []
-    for i = 1:N
-        ix1, ix2 = i, i+1
-        iu1, iu2 = i, i+1
-        push!(
-            txu0_txu1_uc_tf,
-            [
-                t[ix1], r[ix1], θ[ix1], vr[ix1], vθ[ix1], u1[iu1], u2[iu1],  # time (1), state (4), control (2)
-                t[ix2], r[ix2], θ[ix2], vr[ix2], vθ[ix2], u1[iu2], u2[iu2],  # time (1), state (4), control (2)
-                tf
-            ]
-        )
-        @show length(txu0_txu1_uc_tf[i])
-    end
-
-    defects = @expression(model, [i = 1:N], hs_defect(txu0_txu1_uc_tf[i]))
-    @constraint(model, [i = 1:N], defects[i] .== 0.0)
-
-    # OLD API 
-    # # make function aliases with single scalar outputs
-    # hs_defect_1(txu0_txu1_uc...) = hs_defect(txu0_txu1_uc...)[1]
-    # hs_defect_2(txu0_txu1_uc...) = hs_defect(txu0_txu1_uc...)[2]
-    # hs_defect_3(txu0_txu1_uc...) = hs_defect(txu0_txu1_uc...)[3]
-    # hs_defect_4(txu0_txu1_uc...) = hs_defect(txu0_txu1_uc...)[4]
-
-    # # register & add nonlinear constraints for dynamics
-    # register(model, :hs_defect_1, 2*(1+nx+nu)+1, hs_defect_1; autodiff = true)
-    # register(model, :hs_defect_2, 2*(1+nx+nu)+1, hs_defect_2; autodiff = true)
-    # register(model, :hs_defect_3, 2*(1+nx+nu)+1, hs_defect_3; autodiff = true)
-    # register(model, :hs_defect_4, 2*(1+nx+nu)+1, hs_defect_4; autodiff = true)
-
-    # for i = 1:N
-    #     ix1, ix2 = i, i+1
-    #     iu1, iu2 = i, i+1
-    #     txu1 = [t[ix1], r[ix1], θ[ix1], vr[ix1], vθ[ix1], u1[iu1], u2[iu1]]
-    #     txu2 = [t[ix2], r[ix2], θ[ix2], vr[ix2], vθ[ix2], u1[iu2], u2[iu2]]
-    #     @NLconstraint(model, hs_defect_1(txu1..., txu2..., tf) == 0.0)
-    #     @NLconstraint(model, hs_defect_2(txu1..., txu2..., tf) == 0.0)
-    #     @NLconstraint(model, hs_defect_3(txu1..., txu2..., tf) == 0.0)
-    #     @NLconstraint(model, hs_defect_4(txu1..., txu2..., tf) == 0.0)
-    # end
-
-    # append objective
-    @objective(model, Max, r[end]);
-    return model, hs_defect
+    
+    return model, dynamics_orbitraise, state_variables, control_variables
 end
