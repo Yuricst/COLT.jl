@@ -34,7 +34,7 @@ function get_orbit_raising_model(;
     N_controls = N + 1    # number of controls
 
     # initialize model
-    model = Model(solver)
+    model = Model(solver; add_bridges = false)
     #set_optimizer_attribute(model, "algorithm", :LD_MMA)
 
     # decision variables
@@ -67,11 +67,11 @@ function get_orbit_raising_model(;
 
     # boundary constraints (final)
     fix(vr[end], 0.0; force = true)
-    @NLconstraint(model, sqrt(1/r[end]) - vθ[end] == 0.0)
+    @constraint(model, sqrt(1/r[end]) - vθ[end] == 0.0)
 
     # path constraints
     for i = 1:N_controls
-        @NLconstraint(model, u1[i]^2 + u2[i]^2 ≤ 1.0)
+        @constraint(model, u1[i]^2 + u2[i]^2 ≤ 1.0)
     end
 
     # objective is linear, to maximize final radius
@@ -92,28 +92,48 @@ function get_orbit_raising_model(;
         error("collocation_type $collocation_type not recognized")
     end
 
-    # make function aliases with single scalar outputs
-    hs_defect_1(txu0_txu1_uc...) = hs_defect(txu0_txu1_uc...)[1]
-    hs_defect_2(txu0_txu1_uc...) = hs_defect(txu0_txu1_uc...)[2]
-    hs_defect_3(txu0_txu1_uc...) = hs_defect(txu0_txu1_uc...)[3]
-    hs_defect_4(txu0_txu1_uc...) = hs_defect(txu0_txu1_uc...)[4]
-
-    # register & add nonlinear constraints for dynamics
-    register(model, :hs_defect_1, 2*(1+nx+nu)+1, hs_defect_1; autodiff = true)
-    register(model, :hs_defect_2, 2*(1+nx+nu)+1, hs_defect_2; autodiff = true)
-    register(model, :hs_defect_3, 2*(1+nx+nu)+1, hs_defect_3; autodiff = true)
-    register(model, :hs_defect_4, 2*(1+nx+nu)+1, hs_defect_4; autodiff = true)
-
+    # NEW API FOR NONLINEAR PROGRAM (JuMP v1.x)
+    txu0_txu1_uc_tf = []
     for i = 1:N
         ix1, ix2 = i, i+1
         iu1, iu2 = i, i+1
-        txu1 = [t[ix1], r[ix1], θ[ix1], vr[ix1], vθ[ix1], u1[iu1], u2[iu1]]
-        txu2 = [t[ix2], r[ix2], θ[ix2], vr[ix2], vθ[ix2], u1[iu2], u2[iu2]]
-        @NLconstraint(model, hs_defect_1(txu1..., txu2..., tf) == 0.0)
-        @NLconstraint(model, hs_defect_2(txu1..., txu2..., tf) == 0.0)
-        @NLconstraint(model, hs_defect_3(txu1..., txu2..., tf) == 0.0)
-        @NLconstraint(model, hs_defect_4(txu1..., txu2..., tf) == 0.0)
+        push!(
+            txu0_txu1_uc_tf,
+            [
+                t[ix1], r[ix1], θ[ix1], vr[ix1], vθ[ix1], u1[iu1], u2[iu1],  # time (1), state (4), control (2)
+                t[ix2], r[ix2], θ[ix2], vr[ix2], vθ[ix2], u1[iu2], u2[iu2],  # time (1), state (4), control (2)
+                tf
+            ]
+        )
+        @show length(txu0_txu1_uc_tf[i])
     end
+
+    defects = @expression(model, [i = 1:N], hs_defect(txu0_txu1_uc_tf[i]))
+    @constraint(model, [i = 1:N], defects[i] .== 0.0)
+
+    # OLD API 
+    # # make function aliases with single scalar outputs
+    # hs_defect_1(txu0_txu1_uc...) = hs_defect(txu0_txu1_uc...)[1]
+    # hs_defect_2(txu0_txu1_uc...) = hs_defect(txu0_txu1_uc...)[2]
+    # hs_defect_3(txu0_txu1_uc...) = hs_defect(txu0_txu1_uc...)[3]
+    # hs_defect_4(txu0_txu1_uc...) = hs_defect(txu0_txu1_uc...)[4]
+
+    # # register & add nonlinear constraints for dynamics
+    # register(model, :hs_defect_1, 2*(1+nx+nu)+1, hs_defect_1; autodiff = true)
+    # register(model, :hs_defect_2, 2*(1+nx+nu)+1, hs_defect_2; autodiff = true)
+    # register(model, :hs_defect_3, 2*(1+nx+nu)+1, hs_defect_3; autodiff = true)
+    # register(model, :hs_defect_4, 2*(1+nx+nu)+1, hs_defect_4; autodiff = true)
+
+    # for i = 1:N
+    #     ix1, ix2 = i, i+1
+    #     iu1, iu2 = i, i+1
+    #     txu1 = [t[ix1], r[ix1], θ[ix1], vr[ix1], vθ[ix1], u1[iu1], u2[iu1]]
+    #     txu2 = [t[ix2], r[ix2], θ[ix2], vr[ix2], vθ[ix2], u1[iu2], u2[iu2]]
+    #     @NLconstraint(model, hs_defect_1(txu1..., txu2..., tf) == 0.0)
+    #     @NLconstraint(model, hs_defect_2(txu1..., txu2..., tf) == 0.0)
+    #     @NLconstraint(model, hs_defect_3(txu1..., txu2..., tf) == 0.0)
+    #     @NLconstraint(model, hs_defect_4(txu1..., txu2..., tf) == 0.0)
+    # end
 
     # append objective
     @objective(model, Max, r[end]);
