@@ -8,7 +8,7 @@ using LinearAlgebra
 using Memoize
 import AstrodynamicsBase
 
-include("../src/COLT.jl")
+include(joinpath(@__DIR__, "../src/COLT.jl"))
 
 # construct problem
 mu = 1.0
